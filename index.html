@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Observability & EDA Lab</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent-blue: #38bdf8;
+            --accent-green: #4ade80;
+            --accent-red: #f87171;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 20px;
+        }
+        header h1 {
+            color: var(--accent-blue);
+            margin: 0 0 10px 0;
+            font-size: 2.5rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+            border: 1px solid #334155;
+        }
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.4rem;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #475569;
+            background-color: #0f172a;
+            color: white;
+            box-sizing: border-box;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        button:active { transform: scale(0.98); }
+        .btn-success { background-color: var(--accent-green); color: #052e16; }
+        .btn-danger { background-color: var(--accent-red); color: #450a0a; }
+        
+        /* Local Metrics UI Counter */
+        .metrics-strip {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .metric-badge {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .badge-success { background-color: rgba(74, 222, 128, 0.1); color: var(--accent-green); border: 1px solid rgba(74, 222, 128, 0.2); }
+        .badge-danger { background-color: rgba(248, 113, 113, 0.1); color: var(--accent-red); border: 1px solid rgba(248, 113, 113, 0.2); }
+        
+        .log-box {
+            background-color: #020617;
+            color: #38bdf8;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            border-radius: 8px;
+            height: 250px;
+            overflow-y: auto;
+            border: 1px solid #1e293b;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+        }
+        .status-pill {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            background-color: #334155;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>CloudWatch & X-Ray Observability Lab</h1>
+        <p style="color: var(--text-muted);">Event-Driven Architecture (EDA) Testing Console</p>
+    </header>
+
+    <div class="grid">
+        <!-- Control Panel Card -->
+        <div class="card">
+            <h2>🛒 Place Simulation Order</h2>
+            <div class="form-group">
+                <label for="itemSelect">Select Product Template</label>
+                <select id="itemSelect" onchange="updateItemField()">
+                    <option value="iPhone 15 Pro">Standard Order (Success Flow)</option>
+                    <option value="MacBook M3">High-Value Order (Success Flow)</option>
+                    <option value="fail">Simulate System Exception (Fails At API)</option>
+                    <option value="worker_fail">Simulate Business/DLQ Drop (Fails At Worker)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="itemName">Item Payload Label</label>
+                <input type="text" id="itemName" value="iPhone 15 Pro">
+            </div>
+            <div class="form-group">
+                <label for="itemAmount">Order Value ($)</label>
+                <input type="number" id="itemAmount" value="999.99">
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-success" onclick="fireOrder(false)">Process Pipeline</button>
+            </div>
+
+            <h3 style="font-size: 1rem; margin-top:25px; color: var(--text-muted);">Local Session Stats</h3>
+            <div class="metrics-strip">
+                <div class="metric-badge badge-success">Success: <span id="countSuccess">0</span></div>
+                <div class="metric-badge badge-danger">Failures: <span id="countFail">0</span></div>
+            </div>
+        </div>
+
+        <!-- Terminal Logs Card -->
+        <div class="card">
+            <h2>🖥️ Live Traffic Stream <span class="status-pill" style="color: var(--accent-blue);">HTTP Status Logs</span></h2>
+            <div class="log-box" id="terminalLogs"> [System] Web console fully interactive. Awaiting stimulus...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let okCount = 0;
+    let errCount = 0;
+
+    // Sahi Backend URL yahan define kar di hai
+    const BACKEND_URL = 'http://localhost:5001/api/orders';
+
+    function updateItemField() {
+        const sel = document.getElementById('itemSelect').value;
+        document.getElementById('itemName').value = sel;
+        if(sel === 'fail' || sel === 'worker_fail') {
+            document.getElementById('itemAmount').value = "0.00";
+        } else if (sel.includes('MacBook')) {
+            document.getElementById('itemAmount').value = "1999.99";
+        } else {
+            document.getElementById('itemAmount').value = "999.99";
+        }
+    }
+
+    async function fireOrder() {
+        const terminal = document.getElementById('terminalLogs');
+        const item = document.getElementById('itemName').value;
+        const amount = document.getElementById('itemAmount').value;
+        
+        const payload = {
+            orderId: 'ORD-' + Math.floor(100000 + Math.random() * 900000),
+            amount: parseFloat(amount),
+            item: item
+        };
+
+        terminal.innerHTML += `\n<span style="color: #e2e8f0;">[TX] Sending payload: ${JSON.stringify(payload)}</span>`;
+        terminal.scrollTop = terminal.scrollHeight;
+
+        try {
+            // Yahan hum BACKEND_URL use kar rahe hain (Port 5001)
+            const res = await fetch(BACKEND_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            const data = await res.json();
+            
+            if (res.ok && data.success) {
+                terminal.innerHTML += `\n<span style="color: var(--accent-green);">[RX] Success Response: ${JSON.stringify(data)}</span>`;
+                okCount++;
+                document.getElementById('countSuccess').innerText = okCount;
+            } else {
+                terminal.innerHTML += `\n<span style="color: var(--accent-red);">[RX] API Error Status ${res.status}: ${JSON.stringify(data)}</span>`;
+                errCount++;
+                document.getElementById('countFail').innerText = errCount;
+            }
+        } catch (error) {
+            terminal.innerHTML += `\n<span style="color: var(--accent-red);">[Network Error] Cannot connect to API backend at ${BACKEND_URL}. Check if node server.js is running.</span>`;
+        }
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+</script>
