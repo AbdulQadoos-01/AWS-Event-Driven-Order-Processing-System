@@ -1,5 +1,7 @@
 ## 🏗️ Architecture
-![AWS Architecture](https://raw.githubusercontent.com/AbdulQadoos-01/AWS-Event-Driven-Order-Processing-System/main/architecture.png)
+<img width="1024" height="526" alt="image" src="https://github.com/user-attachments/assets/a51e24c5-f15e-4967-ae6c-41e52f4112df" />
+
+
 *Flow: Client -> API Gateway -> Lambda (Ingestor) -> SNS -> SQS -> Lambda (Worker) -> CloudWatch/DLQ*
 
 
